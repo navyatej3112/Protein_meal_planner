@@ -8,6 +8,7 @@ const foodsRouter = require('./routes/foods');
 const mealsRouter = require('./routes/meals');
 const goalsRouter = require('./routes/goals');
 const favoritesRouter = require('./routes/favorites');
+const recipesRouter = require('./routes/recipes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,6 +28,7 @@ app.use('/api/foods', foodsRouter);
 app.use('/api/meals', mealsRouter);
 app.use('/api/goals', goalsRouter);
 app.use('/api/favorites', favoritesRouter);
+app.use('/api/recipes', recipesRouter);
 
 // Health check — useful for confirming the server is up
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));

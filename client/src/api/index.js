@@ -45,6 +45,15 @@ export const deleteMeal = (id) =>
   request(`/meals/${id}`, { method: 'DELETE' });
 
 // ---------------------------------------------------------------------------
+// Recipes (TheMealDB)
+// ---------------------------------------------------------------------------
+
+export const searchRecipes = (query) =>
+  request(`/recipes/search?q=${encodeURIComponent(query)}`);
+
+export const getRecipeById = (id) => request(`/recipes/${id}`);
+
+// ---------------------------------------------------------------------------
 // Favorites
 // ---------------------------------------------------------------------------
 

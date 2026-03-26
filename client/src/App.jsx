@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import Dashboard from './pages/Dashboard'
+import Recipes from './pages/Recipes'
 import Settings from './pages/Settings'
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'recipes', label: 'Recipes' },
   { id: 'settings', label: 'Settings' },
 ]
 
@@ -39,6 +41,7 @@ export default function App() {
       {/* Page content */}
       <main>
         {page === 'dashboard' && <Dashboard />}
+        {page === 'recipes' && <Recipes />}
         {page === 'settings' && <Settings />}
       </main>
     </div>
