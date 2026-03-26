@@ -86,7 +86,7 @@ protein-meal-planner/
 **Prerequisites:** Node.js 18+, and a free USDA API key from [fdc.nal.usda.gov/api-key-signup](https://fdc.nal.usda.gov/api-key-signup) (instant, no approval).
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/protein-meal-planner.git
+git clone https://github.com/navyatej3112/Protein_meal_planner.git
 cd protein-meal-planner
 npm run install:all
 cp .env.example .env
