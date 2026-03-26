@@ -4,6 +4,7 @@ import { getMeals, getGoals } from '../api';
 import MacroBar from '../components/MacroBar';
 import MealSection from '../components/MealSection';
 import FoodSearchModal from '../components/FoodSearchModal';
+import WeeklyChart from '../components/WeeklyChart';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks'];
 
@@ -125,6 +126,11 @@ export default function Dashboard() {
             color="bg-purple-400"
           />
         </div>
+      </div>
+
+      {/* Weekly protein trend chart */}
+      <div className="mb-6">
+        <WeeklyChart proteinGoal={proteinGoal} />
       </div>
 
       {/* Log Food button */}
