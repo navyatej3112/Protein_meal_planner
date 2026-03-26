@@ -5,6 +5,7 @@ import MacroBar from '../components/MacroBar';
 import MealSection from '../components/MealSection';
 import FoodSearchModal from '../components/FoodSearchModal';
 import WeeklyChart from '../components/WeeklyChart';
+import FavoritesPanel from '../components/FavoritesPanel';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks'];
 
@@ -132,6 +133,9 @@ export default function Dashboard() {
       <div className="mb-6">
         <WeeklyChart proteinGoal={proteinGoal} />
       </div>
+
+      {/* Favorites quick-log — hidden when empty */}
+      <FavoritesPanel date={date} />
 
       {/* Log Food button */}
       <button

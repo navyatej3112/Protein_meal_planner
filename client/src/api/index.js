@@ -45,6 +45,18 @@ export const deleteMeal = (id) =>
   request(`/meals/${id}`, { method: 'DELETE' });
 
 // ---------------------------------------------------------------------------
+// Favorites
+// ---------------------------------------------------------------------------
+
+export const getFavorites = () => request('/favorites');
+
+export const saveFavorite = (food) =>
+  request('/favorites', { method: 'POST', body: JSON.stringify(food) });
+
+export const deleteFavorite = (id) =>
+  request(`/favorites/${id}`, { method: 'DELETE' });
+
+// ---------------------------------------------------------------------------
 // Goals
 // ---------------------------------------------------------------------------
 

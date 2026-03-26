@@ -50,6 +50,19 @@ async function initDb() {
       fat_g REAL NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`,
+    // Favorite foods for quick re-logging
+    `CREATE TABLE IF NOT EXISTS favorites (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fdc_id TEXT,                    -- USDA FDC ID (null for manual entries)
+      description TEXT NOT NULL,
+      serving_size REAL NOT NULL,
+      serving_size_unit TEXT NOT NULL,
+      calories REAL NOT NULL,
+      protein_g REAL NOT NULL,
+      carbs_g REAL NOT NULL,
+      fat_g REAL NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
   ];
 
   for (const sql of schemaStatements) {

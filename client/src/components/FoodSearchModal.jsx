@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { searchFoods, logMeal } from '../api';
+import { searchFoods, logMeal, saveFavorite, deleteFavorite, getFavorites } from '../api';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks'];
 
 /**
  * FoodSearchModal — search USDA foods and log a serving to a meal.
+ * Also lets users star foods to save them as favorites.
  *
  * Props:
  *   date      string    YYYY-MM-DD
@@ -16,7 +17,7 @@ export default function FoodSearchModal({ date, onClose }) {
 
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
-  const [selected, setSelected] = useState(null);  // food item to log
+  const [selected, setSelected] = useState(null);
   const [mealType, setMealType] = useState('lunch');
   const [servingMultiplier, setServingMultiplier] = useState(1);
 
@@ -25,8 +26,17 @@ export default function FoodSearchModal({ date, onClose }) {
     queryKey: ['food-search', submittedQuery],
     queryFn: () => searchFoods(submittedQuery),
     enabled: submittedQuery.length > 0,
-    staleTime: 1000 * 60 * 5, // cache results for 5 min
+    staleTime: 1000 * 60 * 5,
   });
+
+  // Load favorites so we can highlight already-starred foods
+  const { data: favorites = [] } = useQuery({
+    queryKey: ['favorites'],
+    queryFn: getFavorites,
+  });
+
+  // Build a Set of fdc_ids that are currently favorited for O(1) lookup
+  const favoritedFdcIds = new Set(favorites.map((f) => String(f.fdc_id)).filter(Boolean));
 
   const { mutate: log, isPending: isLogging } = useMutation({
     mutationFn: logMeal,
@@ -36,6 +46,16 @@ export default function FoodSearchModal({ date, onClose }) {
     },
   });
 
+  const { mutate: star } = useMutation({
+    mutationFn: saveFavorite,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['favorites'] }),
+  });
+
+  const { mutate: unstar } = useMutation({
+    mutationFn: deleteFavorite,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['favorites'] }),
+  });
+
   function handleSearch(e) {
     e.preventDefault();
     if (query.trim()) setSubmittedQuery(query.trim());
@@ -43,20 +63,39 @@ export default function FoodSearchModal({ date, onClose }) {
 
   function handleLog() {
     if (!selected) return;
-
     const m = Number(servingMultiplier);
-    const servingSizeLabel = `${m !== 1 ? `${m} × ` : ''}${selected.servingSize}${selected.servingSizeUnit}`;
-
     log({
       date,
       meal_type: mealType,
       food_name: selected.description,
-      serving_size: servingSizeLabel,
+      serving_size: `${m !== 1 ? `${m} × ` : ''}${selected.servingSize}${selected.servingSizeUnit}`,
       calories: selected.macros.calories * m,
       protein_g: selected.macros.protein_g * m,
       carbs_g: selected.macros.carbs_g * m,
       fat_g: selected.macros.fat_g * m,
     });
+  }
+
+  function handleToggleFavorite(e, food) {
+    // Prevent the click from also selecting the row
+    e.stopPropagation();
+
+    if (favoritedFdcIds.has(String(food.fdcId))) {
+      // Find the favorite row by fdc_id and delete it
+      const existing = favorites.find((f) => String(f.fdc_id) === String(food.fdcId));
+      if (existing) unstar(existing.id);
+    } else {
+      star({
+        fdc_id: String(food.fdcId),
+        description: food.description,
+        serving_size: food.servingSize,
+        serving_size_unit: food.servingSizeUnit,
+        calories: food.macros.calories,
+        protein_g: food.macros.protein_g,
+        carbs_g: food.macros.carbs_g,
+        fat_g: food.macros.fat_g,
+      });
+    }
   }
 
   return (
@@ -89,9 +128,7 @@ export default function FoodSearchModal({ date, onClose }) {
           </form>
 
           {/* Error state */}
-          {error && (
-            <p className="text-sm text-red-500">{error.message}</p>
-          )}
+          {error && <p className="text-sm text-red-500">{error.message}</p>}
 
           {/* Results */}
           {data?.foods && (
@@ -99,27 +136,42 @@ export default function FoodSearchModal({ date, onClose }) {
               {data.foods.length === 0 ? (
                 <li className="px-4 py-3 text-sm text-gray-400 italic">No results found</li>
               ) : (
-                data.foods.map((food) => (
-                  <li
-                    key={food.fdcId}
-                    onClick={() => setSelected(food)}
-                    className={`px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors ${
-                      selected?.fdcId === food.fdcId ? 'bg-blue-50 border-l-2 border-blue-500' : ''
-                    }`}
-                  >
-                    <p className="font-medium text-sm text-gray-800 truncate">{food.description}</p>
-                    {food.brandOwner && (
-                      <p className="text-xs text-gray-400">{food.brandOwner}</p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Per {food.servingSize}{food.servingSizeUnit} —{' '}
-                      <span className="font-medium text-blue-600">{food.macros.protein_g}g protein</span>
-                      {' · '}{food.macros.calories} cal
-                      {' · '}{food.macros.carbs_g}g carbs
-                      {' · '}{food.macros.fat_g}g fat
-                    </p>
-                  </li>
-                ))
+                data.foods.map((food) => {
+                  const isStarred = favoritedFdcIds.has(String(food.fdcId));
+                  return (
+                    <li
+                      key={food.fdcId}
+                      onClick={() => setSelected(food)}
+                      className={`flex items-start gap-2 px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors ${
+                        selected?.fdcId === food.fdcId ? 'bg-blue-50 border-l-2 border-blue-500' : ''
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-gray-800 truncate">{food.description}</p>
+                        {food.brandOwner && (
+                          <p className="text-xs text-gray-400">{food.brandOwner}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Per {food.servingSize}{food.servingSizeUnit} —{' '}
+                          <span className="font-medium text-blue-600">{food.macros.protein_g}g protein</span>
+                          {' · '}{food.macros.calories} cal
+                          {' · '}{food.macros.carbs_g}g carbs
+                          {' · '}{food.macros.fat_g}g fat
+                        </p>
+                      </div>
+                      {/* Star / unstar button */}
+                      <button
+                        onClick={(e) => handleToggleFavorite(e, food)}
+                        title={isStarred ? 'Remove from favorites' : 'Save as favorite'}
+                        className={`shrink-0 text-lg leading-none mt-0.5 transition-colors ${
+                          isStarred ? 'text-yellow-400 hover:text-gray-300' : 'text-gray-200 hover:text-yellow-400'
+                        }`}
+                      >
+                        ★
+                      </button>
+                    </li>
+                  );
+                })
               )}
             </ul>
           )}
@@ -130,7 +182,6 @@ export default function FoodSearchModal({ date, onClose }) {
               <p className="text-sm font-medium text-gray-700 truncate">{selected.description}</p>
 
               <div className="flex gap-3">
-                {/* Meal type */}
                 <div className="flex-1">
                   <label className="text-xs text-gray-500 block mb-1">Meal</label>
                   <select
@@ -139,12 +190,11 @@ export default function FoodSearchModal({ date, onClose }) {
                     className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     {MEAL_TYPES.map((t) => (
-                      <option key={t} value={t} className="capitalize">{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                      <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
                     ))}
                   </select>
                 </div>
 
-                {/* Serving size multiplier */}
                 <div className="flex-1">
                   <label className="text-xs text-gray-500 block mb-1">
                     Servings (1 = {selected.servingSize}{selected.servingSizeUnit})
@@ -160,7 +210,6 @@ export default function FoodSearchModal({ date, onClose }) {
                 </div>
               </div>
 
-              {/* Macro preview */}
               <p className="text-xs text-gray-500">
                 Logging:{' '}
                 <span className="font-semibold text-blue-700">
